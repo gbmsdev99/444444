@@ -297,7 +297,7 @@ export const Admin: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-sm font-medium text-slate-700">Order Date</p>
-                <p className="text-sm text-slate-600">{new Date(order.order_date).toLocaleDateString('en-IN')}</p>
+                <p className="text-sm text-slate-600">{new Date(order.order_date || order.created_at).toLocaleDateString('en-IN')}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-700">Shipping Address</p>
