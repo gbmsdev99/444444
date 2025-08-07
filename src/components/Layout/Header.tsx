@@ -2,11 +2,13 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, ShoppingBag, Ruler, Settings, LogOut } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useAuth } from '../../hooks/useAuth';
+import { signOut } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 
 export const Header: React.FC = () => {
   const location = useLocation();
-  const { user, setUser } = useStore();
+  const { profile, isAuthenticated, isAdmin } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -15,9 +17,13 @@ export const Header: React.FC = () => {
     { name: 'Measurements', href: '/measurements' },
   ];
 
-  const handleLogout = () => {
-    setUser(null);
-    // Add Supabase logout logic here
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+    } catch (error) {
+      toast.error('Error logging out');
+    }
   };
 
   return (
@@ -63,14 +69,14 @@ export const Header: React.FC = () => {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
-            {user ? (
+            {isAuthenticated && profile ? (
               <div className="flex items-center space-x-3">
                 <Link to="/profile" className="flex items-center space-x-2 text-slate-600 hover:text-slate-800">
                   <User className="h-5 w-5" />
-                  <span className="text-sm font-medium">{user.name || user.email}</span>
+                  <span className="text-sm font-medium">{profile.full_name || profile.email}</span>
                 </Link>
-                {user.role === 'admin' && (
-                  <Link to="/admin" className="flex items-center space-x-1 text-slate-600 hover:text-slate-800">
+                {isAdmin && (
+                  <Link to="/admin-dashboard-secret" className="flex items-center space-x-1 text-slate-600 hover:text-slate-800">
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">Admin</span>
                   </Link>

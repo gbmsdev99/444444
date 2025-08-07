@@ -1,40 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Clock, Truck, CheckCircle, Eye, RotateCcw } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAuth } from '../hooks/useAuth';
+import { getOrders } from '../lib/supabase';
+import { Order } from '../types';
+import toast from 'react-hot-toast';
 
 export const Orders: React.FC = () => {
-  const { orders, user } = useStore();
+  const { user, isAuthenticated } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockOrders = [
-    {
-      id: 'ORD-001',
-      productName: 'Custom Dress Shirt',
-      status: 'delivered' as const,
-      orderDate: '2025-01-15',
-      deliveryDate: '2025-01-22',
-      totalPrice: 1599,
-      image: 'https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: 'ORD-002',
-      productName: 'Tailored Suit',
-      status: 'in-stitching' as const,
-      orderDate: '2025-01-20',
-      deliveryDate: '2025-02-03',
-      totalPrice: 4299,
-      image: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: 'ORD-003',
-      productName: 'Custom Blazer',
-      status: 'confirmed' as const,
-      orderDate: '2025-01-25',
-      deliveryDate: '2025-02-08',
-      totalPrice: 2899,
-      image: 'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=400'
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadOrders();
+    } else {
+      setLoading(false);
     }
-  ];
+  }, [isAuthenticated, user]);
+
+  const loadOrders = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await getOrders(user.id);
+      setOrders(data || []);
+    } catch (error: any) {
+      toast.error('Failed to load orders');
+      console.error('Error loading orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -72,7 +69,17 @@ export const Orders: React.FC = () => {
     ).join(' ');
   };
 
-  if (!user) {
+  const getProgressPercentage = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 25;
+      case 'in-stitching': return 50;
+      case 'shipped': return 75;
+      case 'delivered': return 100;
+      default: return 0;
+    }
+  };
+
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -88,6 +95,21 @@ export const Orders: React.FC = () => {
       </div>
     );
   }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
+
+  const stats = {
+    totalOrders: orders.length,
+    pendingOrders: orders.filter(o => o.status === 'confirmed' || o.status === 'in-stitching').length,
+    completedOrders: orders.filter(o => o.status === 'delivered').length,
+    totalSpent: orders.reduce((sum, order) => sum + order.total_amount, 0)
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -118,7 +140,7 @@ export const Orders: React.FC = () => {
             <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Package className="h-8 w-8 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-800">3</h3>
+            <h3 className="text-2xl font-bold text-slate-800">{stats.totalOrders}</h3>
             <p className="text-slate-600">Total Orders</p>
           </div>
 
@@ -126,7 +148,7 @@ export const Orders: React.FC = () => {
             <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-800">2</h3>
+            <h3 className="text-2xl font-bold text-slate-800">{stats.pendingOrders}</h3>
             <p className="text-slate-600">In Progress</p>
           </div>
 
@@ -134,7 +156,7 @@ export const Orders: React.FC = () => {
             <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-800">1</h3>
+            <h3 className="text-2xl font-bold text-slate-800">{stats.completedOrders}</h3>
             <p className="text-slate-600">Delivered</p>
           </div>
 
@@ -142,14 +164,14 @@ export const Orders: React.FC = () => {
             <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Truck className="h-8 w-8 text-purple-600" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-800">₹8,797</h3>
+            <h3 className="text-2xl font-bold text-slate-800">₹{stats.totalSpent.toLocaleString()}</h3>
             <p className="text-slate-600">Total Spent</p>
           </div>
         </motion.div>
 
         {/* Orders List */}
         <div className="space-y-6">
-          {mockOrders.map((order, index) => (
+          {orders.map((order, index) => (
             <motion.div
               key={order.id}
               initial={{ opacity: 0, y: 30 }}
@@ -157,105 +179,104 @@ export const Orders: React.FC = () => {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
             >
-              <div className="md:flex">
-                <div className="md:w-48 flex-shrink-0">
-                  <img
-                    src={order.image}
-                    alt={order.productName}
-                    className="w-full h-48 md:h-full object-cover"
-                  />
+              <div className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-800 mb-1">
+                      Order #{order.order_number}
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      {order.order_items?.length || 0} item(s) • Placed on {new Date(order.order_date).toLocaleDateString('en-IN')}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center mt-2 md:mt-0">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-2">{formatStatus(order.status)}</span>
+                    </span>
+                  </div>
                 </div>
-                
-                <div className="flex-1 p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-800 mb-1">
-                        {order.productName}
-                      </h3>
-                      <p className="text-sm text-slate-500">Order #{order.id}</p>
-                    </div>
-                    
-                    <div className="flex items-center mt-2 md:mt-0">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                        {getStatusIcon(order.status)}
-                        <span className="ml-2">{formatStatus(order.status)}</span>
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="grid md:grid-cols-3 gap-4 mb-6">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Order Date</p>
-                      <p className="text-sm text-slate-600">
-                        {new Date(order.orderDate).toLocaleDateString('en-IN')}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Delivery Date</p>
-                      <p className="text-sm text-slate-600">
-                        {new Date(order.deliveryDate).toLocaleDateString('en-IN')}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Total Amount</p>
-                      <p className="text-lg font-semibold text-slate-800">
-                        ₹{order.totalPrice.toLocaleString()}
-                      </p>
-                    </div>
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Customer</p>
+                    <p className="text-sm text-slate-600">{order.customer_name}</p>
                   </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Delivery Address</p>
+                    <p className="text-sm text-slate-600 truncate">{order.shipping_address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Total Amount</p>
+                    <p className="text-lg font-semibold text-slate-800">
+                      ₹{order.total_amount.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
 
-                  {/* Progress Bar */}
+                {/* Progress Bar */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700">Progress</span>
+                    <span className="text-sm text-slate-600">
+                      {getProgressPercentage(order.status)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div 
+                      className="bg-slate-800 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${getProgressPercentage(order.status)}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                {order.order_items && order.order_items.length > 0 && (
                   <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-slate-700">Progress</span>
-                      <span className="text-sm text-slate-600">
-                        {order.status === 'confirmed' && '25%'}
-                        {order.status === 'in-stitching' && '50%'}
-                        {order.status === 'shipped' && '75%'}
-                        {order.status === 'delivered' && '100%'}
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2">
-                      <div 
-                        className="bg-slate-800 h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: 
-                            order.status === 'confirmed' ? '25%' :
-                            order.status === 'in-stitching' ? '50%' :
-                            order.status === 'shipped' ? '75%' :
-                            '100%'
-                        }}
-                      ></div>
+                    <h4 className="text-sm font-medium text-slate-700 mb-3">Order Items:</h4>
+                    <div className="space-y-2">
+                      {order.order_items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-slate-800">{item.products?.name}</p>
+                            <p className="text-sm text-slate-600">
+                              {item.fabrics?.name} • Qty: {item.quantity}
+                            </p>
+                          </div>
+                          <p className="font-semibold text-slate-800">₹{item.total_price.toLocaleString()}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button className="flex items-center justify-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button className="flex items-center justify-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                  </button>
+                  
+                  {order.status === 'delivered' && (
+                    <button className="flex items-center justify-center px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reorder
                     </button>
-                    
-                    {order.status === 'delivered' && (
-                      <button className="flex items-center justify-center px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors">
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Reorder
-                      </button>
-                    )}
-                    
-                    {order.status === 'in-stitching' && (
-                      <button className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        <Package className="h-4 w-4 mr-2" />
-                        Track Order
-                      </button>
-                    )}
-                  </div>
+                  )}
+                  
+                  {(order.status === 'in-stitching' || order.status === 'shipped') && (
+                    <button className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <Package className="h-4 w-4 mr-2" />
+                      Track Order
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {mockOrders.length === 0 && (
+        {orders.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}

@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Filter, Search, Grid, List } from 'lucide-react';
-import { products } from '../data/mockData';
+import { getProducts } from '../lib/supabase';
+import { Product } from '../types';
+import toast from 'react-hot-toast';
 
 export const Shop: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
 
   const categories = [
     { id: 'all', name: 'All Items' },
@@ -26,6 +29,22 @@ export const Shop: React.FC = () => {
     { value: 'price-high', label: 'Price: High to Low' }
   ];
 
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      const data = await getProducts();
+      setProducts(data || []);
+    } catch (error: any) {
+      toast.error('Failed to load products');
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredProducts = products
     .filter(product => 
       (selectedCategory === 'all' || product.category === selectedCategory) &&
@@ -34,13 +53,21 @@ export const Shop: React.FC = () => {
     .sort((a, b) => {
       switch (sortBy) {
         case 'price-low':
-          return a.basePrice - b.basePrice;
+          return a.base_price - b.base_price;
         case 'price-high':
-          return b.basePrice - a.basePrice;
+          return b.base_price - a.base_price;
         default:
           return a.name.localeCompare(b.name);
       }
     });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -160,7 +187,7 @@ export const Shop: React.FC = () => {
               <Link to={`/customize/${product.id}`} className={viewMode === 'list' ? 'flex w-full' : 'block'}>
                 <div className={viewMode === 'list' ? 'w-80 flex-shrink-0' : 'relative'}>
                   <img
-                    src={product.image}
+                    src={product.image_url}
                     alt={product.name}
                     className={`${
                       viewMode === 'list' 
@@ -182,7 +209,7 @@ export const Shop: React.FC = () => {
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-bold text-slate-800">
-                      ₹{product.basePrice.toLocaleString()}
+                      ₹{product.base_price.toLocaleString()}
                     </span>
                     <span className="text-sm text-slate-500">
                       From

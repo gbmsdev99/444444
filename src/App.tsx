@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { Home } from './pages/Home';
@@ -9,14 +10,33 @@ import { Orders } from './pages/Orders';
 import { Measurements } from './pages/Measurements';
 import { Auth } from './pages/Auth';
 import { Admin } from './pages/Admin';
-import { useStore } from './store/useStore';
+import { Checkout } from './pages/Checkout';
+import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { user } = useStore();
+  const { isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
 
   return (
     <Router>
       <div className="min-h-screen bg-white flex flex-col">
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#1e293b',
+              color: '#fff',
+            },
+          }}
+        />
         <Header />
         <main className="flex-1">
           <Routes>
@@ -27,21 +47,13 @@ function App() {
             <Route path="/measurements" element={<Measurements />} />
             <Route path="/login" element={<Auth mode="login" />} />
             <Route path="/register" element={<Auth mode="register" />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route 
-              path="/admin" 
+              path="/admin-dashboard-secret" 
               element={
-                user && user.role === 'admin' ? <Admin /> : <Navigate to="/login" />
+                isAdmin ? <Admin /> : <Navigate to="/login" />
               } 
             />
-            <Route path="/checkout" element={
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h2 className="text-2xl font-semibold text-slate-800 mb-4">Checkout</h2>
-                  <p className="text-slate-600 mb-8">Payment integration will be implemented here</p>
-                  <p className="text-sm text-slate-500">Stripe/Razorpay integration ready</p>
-                </div>
-              </div>
-            } />
             <Route path="/profile" element={
               <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">

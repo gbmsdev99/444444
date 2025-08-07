@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { signIn, signUp } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -13,7 +14,7 @@ const loginSchema = z.object({
 });
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  fullName: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
@@ -31,7 +32,6 @@ interface AuthProps {
 
 export const Auth: React.FC<AuthProps> = ({ mode }) => {
   const navigate = useNavigate();
-  const { setUser } = useStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,7 +39,6 @@ export const Auth: React.FC<AuthProps> = ({ mode }) => {
     register,
     handleSubmit,
     formState: { errors },
-    setError,
   } = useForm<RegisterForm>({
     resolver: zodResolver(mode === 'login' ? loginSchema : registerSchema),
   });
@@ -48,43 +47,19 @@ export const Auth: React.FC<AuthProps> = ({ mode }) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (mode === 'login') {
-        // Mock login - check credentials
-        if (data.email === 'admin@etailor.com' && data.password === 'admin123') {
-          setUser({
-            id: '1',
-            email: data.email,
-            name: 'Admin User',
-            role: 'admin'
-          });
-          navigate('/admin');
-        } else if (data.email === 'user@example.com' && data.password === 'user123') {
-          setUser({
-            id: '2',
-            email: data.email,
-            name: 'John Doe',
-            role: 'customer'
-          });
-          navigate('/');
-        } else {
-          setError('email', { message: 'Invalid email or password' });
-        }
+        const loginData = data as LoginForm;
+        await signIn(loginData.email, loginData.password);
+        toast.success('Welcome back!');
+        navigate('/');
       } else {
-        // Mock registration
         const registerData = data as RegisterForm;
-        setUser({
-          id: '2',
-          email: registerData.email,
-          name: registerData.name,
-          role: 'customer'
-        });
+        await signUp(registerData.email, registerData.password, registerData.fullName);
+        toast.success('Account created successfully!');
         navigate('/');
       }
-    } catch (error) {
-      setError('email', { message: 'An error occurred. Please try again.' });
+    } catch (error: any) {
+      toast.error(error.message || 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -112,40 +87,24 @@ export const Auth: React.FC<AuthProps> = ({ mode }) => {
             </p>
           </div>
 
-          {/* Demo Credentials */}
-          {mode === 'login' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-            >
-              <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Credentials:</h4>
-              <div className="text-xs text-blue-800 space-y-1">
-                <div><strong>Admin:</strong> admin@etailor.com / admin123</div>
-                <div><strong>User:</strong> user@example.com / user123</div>
-              </div>
-            </motion.div>
-          )}
-
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {mode === 'register' && (
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
+                <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-2">
                   Full Name
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
                   <input
-                    id="name"
+                    id="fullName"
                     type="text"
-                    {...register('name')}
+                    {...register('fullName')}
                     className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
                     placeholder="Enter your full name"
                   />
                 </div>
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                {errors.fullName && (
+                  <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>
                 )}
               </div>
             )}

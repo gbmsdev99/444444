@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Ruler, Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Measurements as MeasurementsType } from '../types';
-import { useStore } from '../store/useStore';
+import { useAuth } from '../hooks/useAuth';
+import { getMeasurements, createMeasurement, updateMeasurement, deleteMeasurement } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const measurementSchema = z.object({
   nickname: z.string().min(1, 'Nickname is required'),
@@ -13,44 +15,43 @@ const measurementSchema = z.object({
   chest: z.number().min(50).max(200),
   waist: z.number().min(50).max(180),
   hips: z.number().min(60).max(200),
-  armLength: z.number().min(40).max(100),
+  arm_length: z.number().min(40).max(100),
   height: z.number().min(100).max(220),
   shoulder: z.number().min(30).max(80),
 });
 
 export const Measurements: React.FC = () => {
-  const { measurements, setMeasurements } = useStore();
+  const { user, isAuthenticated } = useAuth();
+  const [measurements, setMeasurements] = useState<MeasurementsType[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const mockMeasurements: MeasurementsType[] = [
-    {
-      id: '1',
-      nickname: 'Formal Wear',
-      neck: 38.5,
-      chest: 102,
-      waist: 86,
-      hips: 96,
-      armLength: 63.5,
-      height: 175,
-      shoulder: 45.5
-    },
-    {
-      id: '2',
-      nickname: 'Casual Fit',
-      neck: 39,
-      chest: 104,
-      waist: 88,
-      hips: 98,
-      armLength: 64,
-      height: 175,
-      shoulder: 46
-    }
-  ];
 
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<MeasurementsType>({
     resolver: zodResolver(measurementSchema)
   });
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadMeasurements();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated, user]);
+
+  const loadMeasurements = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await getMeasurements(user.id);
+      setMeasurements(data || []);
+    } catch (error: any) {
+      toast.error('Failed to load measurements');
+      console.error('Error loading measurements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAdd = () => {
     setIsAddingNew(true);
@@ -60,7 +61,9 @@ export const Measurements: React.FC = () => {
   const handleEdit = (measurement: MeasurementsType) => {
     setEditingId(measurement.id || null);
     Object.entries(measurement).forEach(([key, value]) => {
-      setValue(key as keyof MeasurementsType, value);
+      if (key !== 'id' && key !== 'user_id' && key !== 'created_at' && key !== 'updated_at') {
+        setValue(key as keyof MeasurementsType, value);
+      }
     });
   };
 
@@ -70,20 +73,36 @@ export const Measurements: React.FC = () => {
     reset();
   };
 
-  const onSubmit = (data: MeasurementsType) => {
-    if (editingId) {
-      // Update existing measurement
-      console.log('Updating measurement:', { ...data, id: editingId });
-    } else {
-      // Add new measurement
-      console.log('Adding new measurement:', data);
+  const onSubmit = async (data: MeasurementsType) => {
+    if (!user) return;
+
+    try {
+      if (editingId) {
+        // Update existing measurement
+        await updateMeasurement(editingId, data);
+        toast.success('Measurement updated successfully');
+      } else {
+        // Add new measurement
+        await createMeasurement({ ...data, user_id: user.id });
+        toast.success('Measurement saved successfully');
+      }
+      
+      await loadMeasurements();
+      handleCancel();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save measurement');
     }
-    handleCancel();
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this measurement set?')) {
-      console.log('Deleting measurement:', id);
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this measurement set?')) return;
+
+    try {
+      await deleteMeasurement(id);
+      toast.success('Measurement deleted successfully');
+      await loadMeasurements();
+    } catch (error: any) {
+      toast.error('Failed to delete measurement');
     }
   };
 
@@ -96,6 +115,31 @@ export const Measurements: React.FC = () => {
     { name: 'Height', description: 'Measure from head to floor without shoes', tip: 'Stand against a wall for accuracy' },
     { name: 'Shoulder Width', description: 'Measure from shoulder point to shoulder point', tip: 'Across the back, at the widest point' }
   ];
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-slate-800 mb-4">Please sign in</h2>
+          <p className="text-slate-600 mb-8">You need to be logged in to manage your measurements.</p>
+          <a
+            href="/login"
+            className="bg-slate-800 text-white px-6 py-3 rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            Sign In
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -242,12 +286,12 @@ export const Measurements: React.FC = () => {
                       <input
                         type="number"
                         step="0.1"
-                        {...register('armLength', { valueAsNumber: true })}
+                        {...register('arm_length', { valueAsNumber: true })}
                         className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
                         placeholder="e.g., 63.5"
                       />
-                      {errors.armLength && (
-                        <p className="text-red-500 text-sm mt-1">{errors.armLength.message}</p>
+                      {errors.arm_length && (
+                        <p className="text-red-500 text-sm mt-1">{errors.arm_length.message}</p>
                       )}
                     </div>
 
@@ -305,7 +349,7 @@ export const Measurements: React.FC = () => {
             )}
 
             {/* Existing Measurement Sets */}
-            {mockMeasurements.map((measurement, index) => (
+            {measurements.map((measurement, index) => (
               <motion.div
                 key={measurement.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -350,7 +394,7 @@ export const Measurements: React.FC = () => {
                   </div>
                   <div className="text-center p-3 bg-slate-50 rounded-lg">
                     <p className="text-sm font-medium text-slate-600">Arm</p>
-                    <p className="text-lg font-semibold text-slate-800">{measurement.armLength} cm</p>
+                    <p className="text-lg font-semibold text-slate-800">{measurement.arm_length} cm</p>
                   </div>
                   <div className="text-center p-3 bg-slate-50 rounded-lg">
                     <p className="text-sm font-medium text-slate-600">Height</p>
@@ -364,7 +408,7 @@ export const Measurements: React.FC = () => {
               </motion.div>
             ))}
 
-            {mockMeasurements.length === 0 && !isAddingNew && (
+            {measurements.length === 0 && !isAddingNew && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -419,12 +463,6 @@ export const Measurements: React.FC = () => {
                   <li>• Take measurements at the same time of day</li>
                   <li>• Ask someone to help for better accuracy</li>
                 </ul>
-              </div>
-
-              <div className="mt-4">
-                <button className="w-full bg-slate-100 text-slate-700 py-3 rounded-lg hover:bg-slate-200 transition-colors">
-                  Download Printable Guide
-                </button>
               </div>
             </motion.div>
           </div>
