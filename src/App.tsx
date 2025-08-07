@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
@@ -14,12 +15,15 @@ import { Checkout } from './pages/Checkout';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, isAuthenticated } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-slate-800 mx-auto mb-4"></div>
+          <p className="text-slate-600 text-lg">Loading E-Tailor...</p>
+        </div>
       </div>
     );
   }
@@ -49,7 +53,7 @@ function App() {
             <Route path="/register" element={<Auth mode="register" />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route 
-              path="/admin-dashboard-secret" 
+              path="/admin" 
               element={
                 isAdmin ? <Admin /> : <Navigate to="/login" />
               } 
@@ -66,7 +70,15 @@ function App() {
 
 // Profile Page Component
 const ProfilePage: React.FC = () => {
-  const { profile, isAuthenticated } = useAuth();
+  const { profile, isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
@@ -143,7 +155,7 @@ const ProfilePage: React.FC = () => {
 // 404 Not Found Page Component
 const NotFoundPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center">
         <h1 className="text-6xl font-bold text-slate-800 mb-4">404</h1>
         <h2 className="text-2xl font-semibold text-slate-800 mb-4">Page Not Found</h2>

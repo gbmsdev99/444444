@@ -66,14 +66,37 @@ export const getCurrentProfile = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-    
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+      
+    if (error) {
+      // If profile doesn't exist, create one
+      if (error.code === 'PGRST116') {
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email!,
+            full_name: user.user_metadata?.full_name || null,
+            role: 'customer'
+          })
+          .select()
+          .single();
+          
+        if (createError) throw createError;
+        return newProfile;
+      }
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('Error in getCurrentProfile:', error);
+    throw error;
+  }
 };
 
 // Real-time subscriptions

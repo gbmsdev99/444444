@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 export const Header: React.FC = () => {
   const location = useLocation();
-  const { profile, isAuthenticated, isAdmin } = useAuth();
+  const { profile, isAuthenticated, isAdmin, loading } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -69,16 +69,20 @@ export const Header: React.FC = () => {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
-            {isAuthenticated && profile ? (
+            {loading ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-800"></div>
+            ) : isAuthenticated && profile ? (
               <div className="flex items-center space-x-3">
                 <Link to="/profile" className="flex items-center space-x-2 text-slate-600 hover:text-slate-800">
                   <User className="h-5 w-5" />
-                  <span className="text-sm font-medium">{profile.full_name || profile.email}</span>
+                  <span className="text-sm font-medium hidden sm:inline">
+                    {profile.full_name || profile.email?.split('@')[0]}
+                  </span>
                 </Link>
                 {isAdmin && (
-                  <Link to="/admin-dashboard-secret" className="flex items-center space-x-1 text-slate-600 hover:text-slate-800">
+                  <Link to="/admin" className="flex items-center space-x-1 text-slate-600 hover:text-slate-800">
                     <Settings className="h-4 w-4" />
-                    <span className="text-sm">Admin</span>
+                    <span className="text-sm hidden sm:inline">Admin</span>
                   </Link>
                 )}
                 <button

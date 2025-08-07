@@ -26,9 +26,10 @@ import { Order, User } from '../types';
 import toast from 'react-hot-toast';
 
 export const Admin: React.FC = () => {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>({});
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<User[]>([]);
@@ -52,6 +53,8 @@ export const Admin: React.FC = () => {
 
   const loadAdminData = async () => {
     try {
+      setError(null);
+      setLoading(true);
       const [statsData, ordersData, customersData] = await Promise.all([
         getAdminStats(),
         getOrders(),
@@ -62,8 +65,9 @@ export const Admin: React.FC = () => {
       setOrders(ordersData || []);
       setCustomers(customersData || []);
     } catch (error: any) {
-      toast.error('Failed to load admin data');
       console.error('Error loading admin data:', error);
+      setError('Failed to load admin data. Please try again.');
+      toast.error('Failed to load admin data');
     } finally {
       setLoading(false);
     }
@@ -71,10 +75,12 @@ export const Admin: React.FC = () => {
 
   const loadOrders = async () => {
     try {
+      setError(null);
       const data = await getOrders();
       setOrders(data || []);
     } catch (error: any) {
       console.error('Error loading orders:', error);
+      toast.error('Failed to refresh orders');
     }
   };
 
@@ -84,21 +90,41 @@ export const Admin: React.FC = () => {
       toast.success('Order status updated successfully');
       await loadOrders();
     } catch (error: any) {
+      console.error('Error updating order status:', error);
       toast.error('Failed to update order status');
     }
   };
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-slate-800 mx-auto mb-4"></div>
+          <p className="text-slate-600 text-lg">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-slate-800 mb-4">Access Denied</h2>
-          <p className="text-slate-600 mb-8">You need admin privileges to access this page.</p>
+          <div className="bg-red-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="h-12 w-12 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-semibold text-slate-800 mb-4">Access Denied</h2>
+          <p className="text-slate-600 mb-8 max-w-md mx-auto">
+            You need admin privileges to access this page. Please contact your administrator if you believe this is an error.
+          </p>
           <a
             href="/"
-            className="bg-slate-800 text-white px-6 py-3 rounded-lg hover:bg-slate-700 transition-colors"
+            className="bg-slate-800 text-white px-8 py-3 rounded-lg hover:bg-slate-700 transition-colors font-medium"
           >
-            Go Home
+            Return Home
           </a>
         </div>
       </div>
@@ -107,8 +133,32 @@ export const Admin: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-slate-800 mx-auto mb-4"></div>
+          <p className="text-slate-600 text-lg">Loading admin dashboard...</p>
+          <p className="text-slate-500 text-sm mt-2">This may take a few moments</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="h-12 w-12 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-semibold text-slate-800 mb-4">Error Loading Dashboard</h2>
+          <p className="text-slate-600 mb-8 max-w-md mx-auto">{error}</p>
+          <button
+            onClick={() => loadAdminData()}
+            className="bg-slate-800 text-white px-6 py-3 rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }

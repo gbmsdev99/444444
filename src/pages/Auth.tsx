@@ -51,7 +51,13 @@ export const Auth: React.FC<AuthProps> = ({ mode }) => {
         const loginData = data as LoginForm;
         await signIn(loginData.email, loginData.password);
         toast.success('Welcome back!');
-        navigate('/');
+        // Check if user is admin and redirect accordingly
+        const profile = await getCurrentProfile();
+        if (profile?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
         const registerData = data as RegisterForm;
         await signUp(registerData.email, registerData.password, registerData.fullName);
@@ -59,7 +65,14 @@ export const Auth: React.FC<AuthProps> = ({ mode }) => {
         navigate('/');
       }
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred');
+      console.error('Auth error:', error);
+      if (error.message?.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password. Please try again.');
+      } else if (error.message?.includes('Email not confirmed')) {
+        toast.error('Please check your email and confirm your account.');
+      } else {
+        toast.error(error.message || 'An error occurred during authentication');
+      }
     } finally {
       setIsLoading(false);
     }
