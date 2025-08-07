@@ -232,21 +232,29 @@ export const Orders: React.FC = () => {
                 </div>
 
                 {/* Order Items */}
-                {order.order_items && order.order_items.length > 0 && (
+                {order.order_items && order.order_items.length > 0 ? (
                   <div className="mb-6">
                     <h4 className="text-sm font-medium text-slate-700 mb-3">Order Items:</h4>
                     <div className="space-y-2">
                       {order.order_items.map((item) => (
                         <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                           <div>
-                            <p className="font-medium text-slate-800">{item.products?.name}</p>
+                            <p className="font-medium text-slate-800">{item.products?.name || 'Custom Item'}</p>
                             <p className="text-sm text-slate-600">
-                              {item.fabrics?.name} • Qty: {item.quantity}
+                              {item.fabrics?.name || 'Premium Fabric'} • Qty: {item.quantity}
                             </p>
                           </div>
                           <p className="font-semibold text-slate-800">₹{item.total_price.toLocaleString()}</p>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-slate-700 mb-3">Order Details:</h4>
+                    <div className="p-3 bg-slate-50 rounded-lg">
+                      <p className="font-medium text-slate-800">Custom Clothing Order</p>
+                      <p className="text-sm text-slate-600">Premium tailored item</p>
                     </div>
                   </div>
                 )}

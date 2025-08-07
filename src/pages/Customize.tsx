@@ -8,6 +8,9 @@ import { z } from 'zod';
 import { products, customizationOptions } from '../data/mockData';
 import { useStore } from '../store/useStore';
 import { Measurements } from '../types';
+import { useAuth } from '../hooks/useAuth';
+import { getMeasurements } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const measurementSchema = z.object({
   neck: z.number().min(10).max(50),
@@ -22,6 +25,7 @@ const measurementSchema = z.object({
 export const Customize: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const { currentCustomization, updateCustomization, measurements } = useStore();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -29,6 +33,7 @@ export const Customize: React.FC = () => {
   const [customOptions, setCustomOptions] = useState<Record<string, string>>({});
   const [designFile, setDesignFile] = useState<File | null>(null);
   const [selectedMeasurement, setSelectedMeasurement] = useState<Measurements | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const product = products.find(p => p.id === productId);
 
@@ -40,8 +45,24 @@ export const Customize: React.FC = () => {
   useEffect(() => {
     if (productId) {
       updateCustomization({ productId });
+      loadUserMeasurements();
     }
   }, [productId, updateCustomization]);
+
+  const loadUserMeasurements = async () => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      setLoading(true);
+      const data = await getMeasurements(user.id);
+      // Update store with user measurements
+      // For now, we'll use the mock measurements from the store
+    } catch (error: any) {
+      console.error('Error loading measurements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedMeasurement) {
@@ -115,7 +136,19 @@ export const Customize: React.FC = () => {
   };
 
   const handleFinalOrder = () => {
-    // Here you would integrate with payment gateway
+    if (!isAuthenticated) {
+      toast.error('Please sign in to place an order');
+      navigate('/login');
+      return;
+    }
+    
+    // Store the customization data for checkout
+    updateCustomization({
+      fabric: selectedFabric,
+      options: customOptions,
+      designUpload: designFile ? URL.createObjectURL(designFile) : null
+    });
+    
     navigate('/checkout');
   };
 

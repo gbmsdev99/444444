@@ -101,13 +101,7 @@ export const subscribeToOrderItems = (callback: (payload: any) => void) => {
 export const getProducts = async () => {
   const { data, error } = await supabase
     .from('products')
-    .select(`
-      *,
-      product_fabrics (
-        fabric_id,
-        fabrics (*)
-      )
-    `)
+    .select('*')
     .eq('is_active', true)
     .order('name');
     
@@ -118,13 +112,7 @@ export const getProducts = async () => {
 export const getProduct = async (id: string) => {
   const { data, error } = await supabase
     .from('products')
-    .select(`
-      *,
-      product_fabrics (
-        fabric_id,
-        fabrics (*)
-      )
-    `)
+    .select('*')
     .eq('id', id)
     .eq('is_active', true)
     .single();

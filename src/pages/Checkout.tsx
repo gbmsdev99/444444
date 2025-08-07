@@ -36,13 +36,13 @@ export const Checkout: React.FC = () => {
 
   // Mock order data - in real app, this would come from cart/customization state
   const mockOrderData = {
-    productName: 'Custom Dress Shirt',
-    fabricName: 'Premium Egyptian Cotton',
-    totalAmount: 1599,
+    productName: 'Custom Clothing Item',
+    fabricName: 'Premium Fabric',
+    totalAmount: 2499,
     customizations: {
-      collar: 'Spread',
-      sleeve: 'Full Sleeve',
-      fit: 'Slim Fit'
+      style: 'Custom Design',
+      fit: 'Tailored Fit',
+      finish: 'Premium'
     }
   };
 
@@ -73,16 +73,9 @@ export const Checkout: React.FC = () => {
 
       // In a real app, you would create order items based on cart contents
       // For demo purposes, we'll create a mock order item
-      await createOrderItem({
-        order_id: order.id,
-        product_id: 'mock-product-id', // This would be the actual product ID
-        fabric_id: 'mock-fabric-id', // This would be the actual fabric ID
-        measurement_id: 'mock-measurement-id', // This would be the actual measurement ID
-        quantity: 1,
-        unit_price: mockOrderData.totalAmount,
-        total_price: mockOrderData.totalAmount,
-        customizations: mockOrderData.customizations
-      });
+      // Note: In production, this would use actual product, fabric, and measurement IDs
+      // For demo purposes, we're skipping the order items creation
+      // since we don't have valid foreign key references
 
       toast.success('Order placed successfully!');
       navigate('/orders');
