@@ -30,16 +30,28 @@ export const Shop: React.FC = () => {
   ];
 
   useEffect(() => {
-    loadProducts();
+    const loadData = async () => {
+      try {
+        await loadProducts();
+      } catch (error) {
+        console.error('Failed to load products:', error);
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, []);
 
   const loadProducts = async () => {
     try {
+      setLoading(true);
       const data = await getProducts();
       setProducts(data || []);
     } catch (error: any) {
       toast.error('Failed to load products');
       console.error('Error loading products:', error);
+      // Set empty array on error to prevent infinite loading
+      setProducts([]);
     } finally {
       setLoading(false);
     }

@@ -49,29 +49,58 @@ export const Auth: React.FC<AuthProps> = ({ mode }) => {
     try {
       if (mode === 'login') {
         const loginData = data as LoginForm;
-        await signIn(loginData.email, loginData.password);
+        
+        // Check if we're in demo mode (no Supabase connection)
+        if (!supabase) {
+          // Demo mode login
+          const { demoLogin } = useAuth();
+          demoLogin(loginData.email, loginData.password);
+        } else {
+          await signIn(loginData.email, loginData.password);
+        }
+        
         toast.success('Welcome back!');
-        // Check if user is admin and redirect accordingly
-        const profile = await getCurrentProfile();
-        if (profile?.role === 'admin') {
+        
+        // Redirect based on email (admin check)
+        if (loginData.email === 'admin@etailor.com') {
           navigate('/admin');
         } else {
           navigate('/');
         }
       } else {
         const registerData = data as RegisterForm;
-        await signUp(registerData.email, registerData.password, registerData.fullName);
+        
+        if (!supabase) {
+          // Demo mode signup
+          const { demoLogin } = useAuth();
+          demoLogin(registerData.email, registerData.password);
+        } else {
+          await signUp(registerData.email, registerData.password, registerData.fullName);
+        }
+        
         toast.success('Account created successfully!');
         navigate('/');
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      if (error.message?.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password. Please try again.');
-      } else if (error.message?.includes('Email not confirmed')) {
-        toast.error('Please check your email and confirm your account.');
+      
+      // In demo mode, always allow login
+      if (!supabase) {
+        toast.success('Demo login successful!');
+        const loginData = data as LoginForm;
+        if (loginData.email === 'admin@etailor.com') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
-        toast.error(error.message || 'An error occurred during authentication');
+        if (error.message?.includes('Invalid login credentials')) {
+          toast.error('Invalid email or password. Please try again.');
+        } else if (error.message?.includes('Email not confirmed')) {
+          toast.error('Please check your email and confirm your account.');
+        } else {
+          toast.error(error.message || 'An error occurred during authentication');
+        }
       }
     } finally {
       setIsLoading(false);

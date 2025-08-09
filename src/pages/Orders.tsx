@@ -13,7 +13,15 @@ export const Orders: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      loadOrders();
+      const loadData = async () => {
+        try {
+          await loadOrders();
+        } catch (error) {
+          console.error('Failed to load orders:', error);
+          setLoading(false);
+        }
+      };
+      loadData();
     } else {
       setLoading(false);
     }
@@ -23,11 +31,14 @@ export const Orders: React.FC = () => {
     if (!user) return;
     
     try {
+      setLoading(true);
       const data = await getOrders(user.id);
       setOrders(data || []);
     } catch (error: any) {
       toast.error('Failed to load orders');
       console.error('Error loading orders:', error);
+      // Set empty array on error
+      setOrders([]);
     } finally {
       setLoading(false);
     }

@@ -45,7 +45,9 @@ export const Customize: React.FC = () => {
   useEffect(() => {
     if (productId) {
       updateCustomization({ productId });
-      loadUserMeasurements();
+      if (isAuthenticated && user) {
+        loadUserMeasurements();
+      }
     }
   }, [productId, updateCustomization]);
 
@@ -53,14 +55,11 @@ export const Customize: React.FC = () => {
     if (!isAuthenticated || !user) return;
     
     try {
-      setLoading(true);
       const data = await getMeasurements(user.id);
-      // Update store with user measurements
-      // For now, we'll use the mock measurements from the store
+      // In a real app, you would update the store with user measurements
+      console.log('User measurements loaded:', data);
     } catch (error: any) {
       console.error('Error loading measurements:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

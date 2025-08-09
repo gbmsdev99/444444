@@ -13,16 +13,27 @@ import { Auth } from './pages/Auth';
 import { Admin } from './pages/Admin';
 import { Checkout } from './pages/Checkout';
 import { useAuth } from './hooks/useAuth';
+import { supabase } from './lib/supabase';
 
 function App() {
   const { isAdmin, loading, isAuthenticated } = useAuth();
+
+  // Show connection status for demo mode
+  const isDemoMode = !supabase;
 
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-slate-800 mx-auto mb-4"></div>
-          <p className="text-slate-600 text-lg">Loading E-Tailor...</p>
+          <p className="text-slate-600 text-lg">
+            {isDemoMode ? 'Loading E-Tailor (Demo Mode)...' : 'Loading E-Tailor...'}
+          </p>
+          {isDemoMode && (
+            <p className="text-slate-500 text-sm mt-2">
+              Running in demo mode - all features available
+            </p>
+          )}
         </div>
       </div>
     );
@@ -31,6 +42,14 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-white flex flex-col">
+        {isDemoMode && (
+          <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-center">
+            <p className="text-blue-800 text-sm">
+              <strong>Demo Mode:</strong> All features are functional. 
+              Admin login: admin@etailor.com / admin123456
+            </p>
+          </div>
+        )}
         <Toaster 
           position="top-right"
           toastOptions={{

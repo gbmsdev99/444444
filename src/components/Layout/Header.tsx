@@ -3,12 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, ShoppingBag, Ruler, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { signOut } from '../../lib/supabase';
+import { signOut, supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export const Header: React.FC = () => {
   const location = useLocation();
-  const { profile, isAuthenticated, isAdmin, loading } = useAuth();
+  const { profile, isAuthenticated, isAdmin, loading, demoLogout } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -19,7 +19,12 @@ export const Header: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      if (!supabase) {
+        // Demo mode logout
+        demoLogout();
+      } else {
+        await signOut();
+      }
       toast.success('Logged out successfully');
     } catch (error) {
       toast.error('Error logging out');

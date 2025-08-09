@@ -12,42 +12,63 @@ export const useAuth = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          loadProfile(session.user.id);
-        } else {
-          setLoading(false);
+    const initAuth = async () => {
+      try {
+        if (!supabase) {
+          // Demo mode - check localStorage for demo user
+          const demoUser = localStorage.getItem('demo-user');
+          if (demoUser && mounted) {
+            const user = JSON.parse(demoUser);
+            setUser(user);
+            await loadProfile(user.id);
+          } else if (mounted) {
+            setLoading(false);
+          }
+          return;
         }
-      }
-    }).catch((error) => {
-      console.error('Session error:', error);
-      if (mounted) {
-        setError('Failed to load session');
-        setLoading(false);
-      }
-    });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+        // Real Supabase mode
+        const { data: { session } } = await supabase.auth.getSession();
         if (mounted) {
           setUser(session?.user ?? null);
           if (session?.user) {
             await loadProfile(session.user.id);
           } else {
-            setProfile(null);
             setLoading(false);
           }
         }
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (mounted) {
+              setUser(session?.user ?? null);
+              if (session?.user) {
+                await loadProfile(session.user.id);
+              } else {
+                setProfile(null);
+                setLoading(false);
+              }
+            }
+          }
+        );
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setError('Failed to initialize authentication');
+          setLoading(false);
+        }
       }
-    );
+    };
+
+    initAuth();
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
   }, []);
 
@@ -55,7 +76,9 @@ export const useAuth = () => {
     try {
       setError(null);
       const profileData = await getCurrentProfile();
-      setProfile(profileData);
+      if (profileData) {
+        setProfile(profileData);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
       setError('Failed to load profile');
@@ -64,12 +87,36 @@ export const useAuth = () => {
     }
   };
 
+  // Demo mode login function
+  const demoLogin = (email: string, password: string) => {
+    const demoUser = {
+      id: email === 'admin@etailor.com' ? 'demo-admin-id' : 'demo-user-id',
+      email: email,
+      user_metadata: { 
+        full_name: email === 'admin@etailor.com' ? 'Admin User' : 'Demo User' 
+      }
+    };
+    
+    localStorage.setItem('demo-user', JSON.stringify(demoUser));
+    setUser(demoUser as any);
+    loadProfile(demoUser.id);
+  };
+
+  // Demo mode logout function
+  const demoLogout = () => {
+    localStorage.removeItem('demo-user');
+    setUser(null);
+    setProfile(null);
+  };
+
   return {
     user,
     profile,
     loading,
     error,
     isAuthenticated: !!user,
-    isAdmin: profile?.role === 'admin'
+    isAdmin: profile?.role === 'admin',
+    demoLogin,
+    demoLogout
   };
 };

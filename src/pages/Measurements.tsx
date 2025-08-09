@@ -33,7 +33,15 @@ export const Measurements: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      loadMeasurements();
+      const loadData = async () => {
+        try {
+          await loadMeasurements();
+        } catch (error) {
+          console.error('Failed to load measurements:', error);
+          setLoading(false);
+        }
+      };
+      loadData();
     } else {
       setLoading(false);
     }
@@ -43,11 +51,14 @@ export const Measurements: React.FC = () => {
     if (!user) return;
     
     try {
+      setLoading(true);
       const data = await getMeasurements(user.id);
       setMeasurements(data || []);
     } catch (error: any) {
       toast.error('Failed to load measurements');
       console.error('Error loading measurements:', error);
+      // Set empty array on error
+      setMeasurements([]);
     } finally {
       setLoading(false);
     }
